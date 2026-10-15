@@ -10,8 +10,9 @@ COMP3710, Semester 2 2026. Selected project: multi-layer GNN node classification
 - The course data mirror was located in the PDF's embedded link in Appendix A.6: https://github.com/gayanku/facebook_page-page_dataset . The original PyG download domain is unavailable from the current environment.
 - The pinned course archive has been downloaded and audited. It has 22,470 nodes, 128 finite feature values per node, four classes and 342,004 raw edge entries. See `reports/data_audit.json` for the checksum, provenance and complete audit.
 - Split seed 42 gives 13,481 training, 4,493 validation and 4,496 test nodes. The splits cover every node exactly once.
-- `dataset.py` implements numeric loading, validation, stratified splitting, training-only feature scaling and conversion to a PyG Data object. Four CPU software tests passed. The PyG conversion itself has not yet been executed because local Torch/PyG dependencies are not installed.
-- Models have not been implemented or trained; there are no classification-performance results yet.
+- The required `modules.py`, `dataset.py`, `train.py` and `predict.py` are implemented. Actual PyG conversion, five CPU training epochs for each model, checkpoint saving/reloading, validation predictions, confidence plots and a GCN t-SNE plot have run successfully.
+- All six software tests passed, including graph normalization and permutation equivariance. See `reports/feasibility_smoke.json` for the preliminary evidence and exact software versions.
+- These are short feasibility runs, not final performance estimates. The test set has not been evaluated. Formal experiments, GPU resource measurements, manual interpretation and the final report remain outstanding.
 - The supplied course announcement offers a quota-limited Virtual GPU Lab at https://gpu-lab.cloud.eait.uq.edu.au/ . Rangpur is also an option. Current hardware, package versions and available quota still need checking. This data audit used no GPU time.
 
 ## Problem and engineering question
@@ -28,7 +29,37 @@ The mirror uses `X`, `y`, `edges_x` and `edges_y`, while the upstream FacebookPa
 2. Audit feature shapes, finite values, label values, edge endpoints, self-loops, duplicate edges, and class balance. Record whether the edge count includes both directions.
 3. Create and save one stratified 60/20/20 train/validation/test split with split seed 42. Use the same split for every model and initialization seed. Fit any feature standardization only on training nodes.
 4. Use a clearly documented transductive setting: all node features and graph edges are available; only training labels enter optimization. Validation and test labels are never model inputs or messages. Test labels do not determine hyperparameters or confidence thresholds.
-5. Choose model settings and the confidence threshold using validation data. Reserve a separate part of the validation set for temperature calibration if calibration is added. Evaluate the locked procedure on the held-out test set.
+5. The 4,493 validation nodes are split into 2,245 model-selection and 2,248 calibration/threshold-fitting nodes using role seed 43. Select checkpoints with the former; fit scalar temperature and an empirical reject threshold with the latter. Evaluate the locked procedure on the held-out test set.
+
+## Reproducing the current feasibility stage
+
+Use a project environment with a suitable PyTorch build, then install the remaining dependencies in `requirements.txt`. `requirements-verified-cpu.txt` records the exact direct versions used locally; GPU runs need an appropriate CUDA-enabled PyTorch build and their own recorded versions.
+
+From this folder:
+
+```bash
+python audit_dataset.py --download
+python -m unittest discover -v
+python train.py --smoke --device cpu --epochs 5 --models mlp gcn
+python predict.py runs/smoke/gcn_seed42/model.pt --split validation --embedding
+```
+
+The smoke mode caps training at five epochs and refuses test evaluation. Checkpoints, predictions and figures are stored under `runs/`, which is excluded from Git. The short runs have 8,516 parameters per model and declining training losses; they do not establish the final comparative quality of the methods.
+
+The one-page feasibility draft is in `outputs/feasibility_review.pdf`; its editable text is `feasibility_review_draft.md`. A tutor consultation must still be completed and recorded.
+
+## Formal experiment procedure - not yet executed
+
+After the compulsory check-off and before viewing any test results, lock the data split, model settings, seed list and operating-point fitting rule. The initial matched settings are hidden width 64, dropout 0.5, Adam learning rate 0.01, weight decay 0.0005, up to 200 epochs and patience 30, with initialization seeds 42, 43 and 44.
+
+```bash
+python train.py --models mlp gcn --seeds 42 43 44 --device cuda --epochs 200 --evaluate-test
+python predict.py runs/final/gcn_seed42/model.pt --split test --device cuda --embedding
+```
+
+The final command evaluates a locked procedure; do not use its test scores to choose settings or select the most flattering seed. Use the prespecified seed 42 for qualitative plots and case studies, and report aggregate performance over all three initialization seeds. The fixed split does not measure variation across different data splits. Calibration/threshold fitting statistics are in-sample for that fitting stage; independent estimates come from the final test set.
+
+Record the actual GPU, package versions, peak allocated/reserved memory and synchronized full-graph inference time. No GPU resource measurement is available from the CPU feasibility stage. In the quota-limited Virtual GPU Lab, preserve code and results before ending the instance; check the environment rather than assuming the supplied COMP4703 environment includes every GNN dependency.
 
 ## Initial models and experiment scope
 
@@ -54,12 +85,13 @@ Do not invent missing metrics, claim the GCN outperforms the MLP before evaluati
 
 ## Implementation milestones
 
-1. Dataset acquisition and audit are complete. Review the feasibility draft and complete the tutor check-off.
-2. Implement `dataset.py`, `modules.py` and an MLP training check.
-3. Implement the GCN and comparable experiments in `train.py`.
-4. Add checkpoint loading and test examples in `predict.py`; generate plots and inspect failures.
-5. Complete this README, export it for Turnitin, and open a PR to upstream `topic-recognition` from the student's fork.
-6. Address the later teaching-team code review within its announced response window.
+1. Complete: course data acquisition/audit, reproducible splits and six software tests.
+2. Complete: MLP/GCN prototype, five-epoch CPU checks and saved-model validation inference.
+3. Next: review the one-page feasibility draft and complete the tutor check-off.
+4. Run the locked matched experiments, measure actual GPU use and evaluate the held-out test set.
+5. Inspect 3-5 failures, interpret embedding/confidence plots and write the evidence-based recommendation.
+6. Complete this README, export it for Turnitin, and open a PR to upstream `topic-recognition` from the student's fork.
+7. Address the later teaching-team code review within its announced response window.
 
 Keep meaningful commits as each real milestone is reached. Do not commit datasets, model weights, private keys or generated dependency environments.
 
@@ -69,9 +101,9 @@ The 2026 course profile lists the Pattern Analysis Project assessment period as 
 
 ## Artificial Intelligence Usage Disclosure
 
-Codex assisted with interpreting the supplied specification, checking primary references and drafting this project plan and feasibility outline. No model results have been generated or verified at this stage. The disclosure must be updated to describe actual implementation assistance and the student's audits and tests as development progresses.
+Codex assisted with specification interpretation, primary-reference checks, project planning, the feasibility draft, and drafting/refining the data pipeline, MLP/GCN implementation, training/evaluation scripts and software tests. Validation included an actual archive audit; six synthetic software checks; five CPU training epochs for both models; checkpoint reloading; validation predictions; and confidence/t-SNE figure generation. Exact run versions are recorded in `reports/feasibility_smoke.json`. The final test set and school GPU quota were not used during these checks.
 
-Codex also drafted the data-loading/audit scripts and four synthetic software tests. The scripts were run against the actual course archive with NumPy 2.3.5 on Python 3.12.14; all four tests passed. Synthetic tests check software behaviour only and are not evidence of classification performance. The student still needs to review and understand the implementation.
+Synthetic tests check software behaviour and the short runs check execution feasibility; neither establishes final comparative performance. The student still needs to review, understand and verify the implementation, complete the tutor consultation and update this disclosure as formal experiments progress.
 
 ## References
 
