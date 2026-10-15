@@ -7,9 +7,12 @@ COMP3710, Semester 2 2026. Selected project: multi-layer GNN node classification
 - The student selected the Normal GNN project.
 - The course repository has been cloned from `topic-recognition`, starting at commit `552b902`. The course remote is named `upstream`.
 - Dataset specifications and the GCN reference have been checked against primary sources.
-- The original PyG dataset download URL could not be resolved from the current environment. The lecturer mentioned a GitHub backup; its exact URL is still needed.
-- The dataset has not been acquired or audited. Models have not been implemented or trained. There are no experimental results yet.
-- Rangpur was used in the student's earlier demo preparation. Its current environment and GPU availability still need to be checked before running this project.
+- The course data mirror was located in the PDF's embedded link in Appendix A.6: https://github.com/gayanku/facebook_page-page_dataset . The original PyG download domain is unavailable from the current environment.
+- The pinned course archive has been downloaded and audited. It has 22,470 nodes, 128 finite feature values per node, four classes and 342,004 raw edge entries. See `reports/data_audit.json` for the checksum, provenance and complete audit.
+- Split seed 42 gives 13,481 training, 4,493 validation and 4,496 test nodes. The splits cover every node exactly once.
+- `dataset.py` implements numeric loading, validation, stratified splitting, training-only feature scaling and conversion to a PyG Data object. Four CPU software tests passed. The PyG conversion itself has not yet been executed because local Torch/PyG dependencies are not installed.
+- Models have not been implemented or trained; there are no classification-performance results yet.
+- The supplied course announcement offers a quota-limited Virtual GPU Lab at https://gpu-lab.cloud.eait.uq.edu.au/ . Rangpur is also an option. Current hardware, package versions and available quota still need checking. This data audit used no GPU time.
 
 ## Problem and engineering question
 
@@ -17,9 +20,11 @@ Build a prototype for a reviewer who classifies Facebook pages. Compare a featur
 
 ## Dataset and evaluation design
 
-The specified PyG FacebookPagePage dataset has 22,470 nodes, 128 input features, four classes, and 342,004 edge entries according to the documentation. These are expected specifications, not measurements of a downloaded file.
+The downloaded course archive matches the documented graph dimensions. The supplied features are a 128-dimensional SVD compression of 4,714 description-token indicators. This provided representation is used in a transductive setting; it is not a feature transform fitted solely on training nodes.
 
-1. Acquire the original 128-dimensional dataset or the lecturer's verified mirror. Record the source URL and file checksum. Do not substitute the raw SNAP feature-index lists for the specified feature vectors without approval.
+The mirror uses `X`, `y`, `edges_x` and `edges_y`, while the upstream FacebookPagePage loader expects different names. `dataset.py` therefore constructs native PyG Data explicitly. It does not load the optional pickled `page_name` objects. The audit found 179 duplicate edge entries and 358 raw self-loop entries; graph construction deduplicates and removes existing loops so the GCN can later add exactly one self-loop per node.
+
+1. Use the course-linked mirror, pinned at commit `ec01d02c39da4385052023ed28e36f0794f61dc8`, with SHA-256 `7a1b8a0687515e9859d1ca649dc276825f5db44568894dfbb6b55ebc1cf6a9c1`. Do not substitute raw feature-index lists for dense vectors.
 2. Audit feature shapes, finite values, label values, edge endpoints, self-loops, duplicate edges, and class balance. Record whether the edge count includes both directions.
 3. Create and save one stratified 60/20/20 train/validation/test split with split seed 42. Use the same split for every model and initialization seed. Fit any feature standardization only on training nodes.
 4. Use a clearly documented transductive setting: all node features and graph edges are available; only training labels enter optimization. Validation and test labels are never model inputs or messages. Test labels do not determine hyperparameters or confidence thresholds.
@@ -49,7 +54,7 @@ Do not invent missing metrics, claim the GCN outperforms the MLP before evaluati
 
 ## Implementation milestones
 
-1. Dataset acquisition and audit; finish the feasibility review and complete the tutor check-off.
+1. Dataset acquisition and audit are complete. Review the feasibility draft and complete the tutor check-off.
 2. Implement `dataset.py`, `modules.py` and an MLP training check.
 3. Implement the GCN and comparable experiments in `train.py`.
 4. Add checkpoint loading and test examples in `predict.py`; generate plots and inspect failures.
@@ -66,6 +71,8 @@ The 2026 course profile lists the Pattern Analysis Project assessment period as 
 
 Codex assisted with interpreting the supplied specification, checking primary references and drafting this project plan and feasibility outline. No model results have been generated or verified at this stage. The disclosure must be updated to describe actual implementation assistance and the student's audits and tests as development progresses.
 
+Codex also drafted the data-loading/audit scripts and four synthetic software tests. The scripts were run against the actual course archive with NumPy 2.3.5 on Python 3.12.14; all four tests passed. Synthetic tests check software behaviour only and are not evidence of classification performance. The student still needs to review and understand the implementation.
+
 ## References
 
 - Supplied course specification: `COMP3710_Report_2026_draft_v2.3.pdf`, particularly Sections 2.1, 3, 4, 5 and 6.
@@ -73,4 +80,5 @@ Codex assisted with interpreting the supplied specification, checking primary re
 - PyG dataset loader and original download URL: https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/datasets/facebook.html
 - Kipf and Welling, *Semi-Supervised Classification with Graph Convolutional Networks*: https://arxiv.org/abs/1609.02907
 - PyG download issue: https://github.com/pyg-team/pytorch_geometric/issues/10525
+- Course-linked data mirror and preprocessing description: https://github.com/gayanku/facebook_page-page_dataset
 - 2026 course profile: https://course-profiles.uq.edu.au/course-profiles/COMP3710-60675-7660

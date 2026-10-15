@@ -1,6 +1,6 @@
 # Feasibility Review: Confidence-aware Facebook Page Classification
 
-**Draft - complete the empirical feasibility evidence before presenting this review to the tutor.**
+**Working draft - data audit complete; review and understand this plan before discussing it with the tutor. No tutor check-off is recorded here.**
 
 **Scope and user need.** Build a Normal-difficulty node-classification prototype that helps a reviewer categorize Facebook pages and refer uncertain predictions for manual review. Investigate whether a multi-layer GCN provides more useful and reliable predictions than a feature-only MLP at an acceptable resource cost.
 
@@ -14,8 +14,8 @@
 4. Provide an interpreted t-SNE/UMAP visualization and explain 3-5 actual failure cases.
 5. Measure parameter count, inference time and GPU memory. The initial planning budget is one Rangpur GPU and a 4 GiB peak-memory target; this is a target to test, not a measured requirement or a guarantee of available hardware.
 
-**Preliminary evidence and remaining check.** The course repository branch and dataset documentation have been checked. The documented dataset contains 22,470 nodes; its float32 feature matrix alone would occupy approximately 11 MiB. This is a calculation and does not estimate total training memory. The original download domain failed a DNS check on 15 October 2026. The lecturer's mirror is still required. Before the tutor consultation, add the real dataset checksum, shape/class/split audit and a short MLP/GCN execution result or measured resource estimate. No training result is currently available.
+**Preliminary evidence.** The course-linked mirror has been downloaded and audited: 22,470 nodes, 128 finite float32 features per node, four classes and 342,004 raw edge entries. Fixed split seed 42 gives 13,481/4,493/4,496 training/validation/test nodes with no overlap. The numeric feature array occupies 10.97 MiB; this is not peak training memory. Four synthetic software tests passed, covering split validity, training-only scaling, graph-edge cleaning and malformed inputs. The archive checksum and source commit are recorded in `reports/data_audit.json`. There are no model-training or classification-performance results yet.
 
-**Risks, budget and fallback.** Main risks are inaccessible or mismatched data, label leakage, oversmoothing and overconfident errors. Confirm the 128-dimensional dataset before implementation, keep labels separate from model inputs, start with a shallow GCN and use the MLP as the comparison and operational fallback. Run a short feasibility experiment before longer Rangpur jobs. Confirm the submission and check-off dates in the course assessment pages; the public profile currently gives an assessment period of 19-30 October 2026.
+**Risks, budget and fallback.** Main risks are label leakage, oversmoothing, overconfident errors and compute availability. Keep labels separate from model inputs, start with a shallow GCN and use the MLP as the comparison and operational fallback. The mirror uses SVD features and custom array names, so construct PyG Data explicitly rather than assuming the stock loader is compatible. Run short checks before longer jobs. A new quota-limited Virtual GPU Lab is available according to the course announcement; Rangpur is another option. Confirm the precise submission and check-off dates; the course profile gives an assessment period of 19-30 October 2026.
 
-**Next experiment.** Acquire and audit the approved dataset, then run a short training/backpropagation check and record the actual environment and resource use. Incorporate this review into the final README after the required tutor consultation.
+**Next experiment.** Run short MLP/GCN training and backpropagation checks, recording the actual environment and resource use, before longer GPU experiments. Incorporate this review into the final README and record the required tutor consultation separately.
