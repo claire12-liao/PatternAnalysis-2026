@@ -14,7 +14,7 @@ Across three initialisations on one fixed split, GCN reaches **93.84% test accur
 
 ## 2. Data, preprocessing and leakage controls
 
-The course-linked [Facebook Page-Page mirror](https://github.com/gayanku/facebook_page-page_dataset) provides **22,470 nodes and 128 finite features per node**. Class counts are tvshow 6,495; government 6,880; company 5,768; politician 3,327. Features are a supplied SVD compression of 4,714 description-token indicators; their upstream construction is not claimed as training-only.
+The course-linked [Facebook Page-Page mirror](https://github.com/gayanku/facebook_page-page_dataset) provides **22,470 nodes and 128 finite features per node**. The Version 2.4 specification (Section 2.1 and Appendix A.6) explicitly directs students to this modified Gayanku FacebookPagePage source because the original link is unavailable. This is already the source used for all recorded experiments; the clarification requires no dataset substitution or retraining. Class counts are tvshow 6,495; government 6,880; company 5,768; politician 3,327. Features are a supplied SVD compression of 4,714 description-token indicators; their upstream construction is not claimed as training-only.
 
 The archive is pinned to commit `ec01d02c39da4385052023ed28e36f0794f61dc8`, SHA-256 `7a1b8a0687515e9859d1ca649dc276825f5db44568894dfbb6b55ebc1cf6a9c1`. Because its numeric keys differ from the standard PyG loader, `dataset.py` constructs `torch_geometric.data.Data` explicitly, without loading pickled page names. The audit validates dimensions, labels, finite values, endpoints and edges.
 
@@ -229,7 +229,7 @@ The following preserves the **preliminary** review; its unfinished-experiment st
 
 ## 13. Submission status
 
-The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. A progressive Git history, a working PR against upstream `topic-recognition`, its later review response, the tutor-recorded check-off and the Turnitin PDF are separate assessment requirements. Their completion must be checked independently; this report does not claim submission or check-off. The selected Normal problem does not qualify for the Hard-only implementation criterion.
+The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.4. Turnitin submission/receipt, the tutor-recorded check-off and the later PR review response remain separate outstanding requirements; the report does not establish their completion. The selected Normal problem does not qualify for the Hard-only implementation criterion.
 
 ## Artificial Intelligence Usage Disclosure
 
@@ -239,7 +239,7 @@ Verification included the checksum/data audit, leakage and graph-normalisation c
 
 ## References
 
-1. COMP3710 teaching team. *Final Report Assessment*, draft v2.3, 2026, Sections 2.1 and 3-6; supplied assessment document.
+1. COMP3710 teaching team. *Final Report Assessment*, Version 2.4, 2026, Sections 2.1 and 3-6 and Appendix A.6; supplied assessment document checked on 21 October. Version 2.4 clarifies the GNN data source; the relevant check-off, submission and marking provisions are unchanged from the previously supplied specification.
 2. T. N. Kipf and M. Welling. *Semi-Supervised Classification with Graph Convolutional Networks*. ICLR, 2017. [Paper](https://arxiv.org/abs/1609.02907).
 3. C. Guo, G. Pleiss, Y. Sun and K. Q. Weinberger. *On Calibration of Modern Neural Networks*. ICML, 2017. [Paper](https://arxiv.org/abs/1706.04599).
 4. PyTorch Geometric. [FacebookPagePage documentation](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.datasets.FacebookPagePage.html) and [loader source](https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/datasets/facebook.html).
