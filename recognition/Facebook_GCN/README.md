@@ -4,6 +4,8 @@
 
 **Selected project:** Multi-layer GNN, Normal difficulty.
 
+**Documentation update: 22 October 2026.** Feasibility check-off completed (student-confirmed); failure analysis expanded. Recorded formal experiments are unchanged.
+
 ## 1. Purpose and principal findings
 
 This Facebook-page classification assistant combines 128-dimensional page features and connections using a two-layer graph convolutional network (GCN). It predicts television-show, government, company or politician labels. A matched feature-only multilayer perceptron (MLP) tests graph context's value. The engineering question is whether classification and confidence gains justify additional cost, and whether uncertainty can guide human review.
@@ -11,6 +13,8 @@ This Facebook-page classification assistant combines 128-dimensional page featur
 Across three initialisations on one fixed split, GCN reaches **93.84% test accuracy**, versus **80.77% for MLP**, a **13.07 percentage-point** gain. GCN Macro-F1 is 0.9333 versus 0.7884. Nevertheless, very confident mistakes remain. The fitted GCN threshold is zero, accepting every case: it meets the original empirical accuracy target but fails to provide useful ambiguity routing. The recommendation is a stronger classification prototype with human oversight, rather than automatic deployment under the present policy.
 
 ![Test accuracy and Macro-F1 across three initialisation seeds](figures/model_comparison.png)
+
+The comparison summarises the matched runs, including their variability; it does not show uncertainty across independent data splits. Classification improvement and successful routing of uncertain cases are separate outcomes.
 
 ## 2. Data, preprocessing and leakage controls
 
@@ -47,7 +51,7 @@ Both networks use **128 -> 64 -> 4**, ReLU, dropout 0.5 and **8,516 parameters**
 | `audit_dataset.py` | Numeric dataset and split-provenance audit |
 | `test_data_pipeline.py`, `test_models.py` | Six data/model correctness checks |
 
-English docstrings explain purposes, functions and protocol boundaries. Six checks passed before formal runs, covering splits/class coverage, training-only scaling, invalid arrays, duplicate/self-loop handling, adjacency correctness, and permutation equivariance/finite gradients. Software checks do not establish predictive quality.
+English docstrings explain purposes, functions and protocol boundaries. Six checks passed before formal runs, covering splits/class coverage, training-only scaling, invalid arrays, duplicate/self-loop handling, adjacency correctness, and permutation equivariance/finite gradients. These small synthetic fixtures test specific properties, not exhaustive correctness or the absence of every possible leakage path. The five-epoch CPU smoke runs and later saved-model reloads provide separate execution evidence. Neither software checks nor a decreasing training loss establish held-out quality or deployment safety.
 
 ## 4. Training, model selection and saved-model inference
 
@@ -57,7 +61,7 @@ Matched settings are Adam, learning rate 0.01, weight decay 0.0005, maximum 200 
 
 ![GCN seed-42 training and selection histories](figures/gcn_training.png)
 
-Loss falls for both models. GCN seed 42 selects epoch 167 and stops at 197; the last epoch is not necessarily best. All three runs are reported. Seeds change initialisation/stochastic training, **not the split**. Means/sample standard deviations describe optimisation variability, not confidence intervals or variation across independent splits.
+Loss falls for both models. The left panels show cross-entropy, while the right panels show model-selection Macro-F1; an improvement in one need not mean every other measure improves. GCN seed 42 selects epoch 167 and stops at 197; the last epoch is not necessarily best. All three runs are reported. Seeds change initialisation/stochastic training, **not the split**. Means/sample standard deviations describe optimisation variability, not confidence intervals or variation across independent splits.
 
 Checkpoints save architecture, weights, checksum, seeds, scaling, temperature and threshold. `predict.py` verifies checksum/scaling, restores weights and uses evaluation mode without gradients; non-final checkpoints cannot evaluate test labels. Both seed-42 checkpoints were reloaded, exporting 4,496 predictions each; CSV accuracy agrees with saved evaluation.
 
@@ -92,7 +96,7 @@ The **prespecified seed 42** provides P/R/F1 (precision/recall/F1) below; overal
 
 ![Seed-42 test confusion matrices; rows are true and columns predicted classes](figures/confusion_matrices.png)
 
-Matrix numbers are counts; colour is normalised within each true-class row. GCN improves all four class F1 scores over MLP. Politician is still weakest: recall 0.8694 means **87 of 666 politicians are missed**, including 54 predicted as tvshow. Conversely, 45 tvshow nodes are predicted as politicians. Each misclassification is a false negative for its true class and a false positive for its predicted class. High aggregate accuracy therefore does not eliminate consequential class-specific errors.
+Matrix numbers are counts; colour is normalised within each true-class row. GCN improves all four class F1 scores over MLP. Politician is still weakest: recall 0.8694 means **87 of 666 politicians are missed**, including 54 predicted as tvshow. Conversely, 45 tvshow nodes are predicted as politicians. Each misclassification is a false negative for its true class and a false positive for its predicted class. Aggregate accuracy can mask class-specific errors.
 
 ## 6. Confidence, calibration and the reject-option limitation
 
@@ -109,7 +113,7 @@ These are held-out means. GCN ECE improves; MLP ECE worsens despite improved mea
 
 ![GCN seed-42 reliability and risk-coverage curves](figures/gcn_confidence.png)
 
-Reliability compares confidence with correctness; the diagonal is ideal. Risk-coverage plots sort predictions by confidence, showing accepted-case error against coverage. These test diagnostics do not define a new test-tuned policy. Near-diagonal regions coexist with near-certain errors.
+Reliability compares each populated bin's mean confidence with empirical accuracy; the diagonal is ideal. A point above the diagonal indicates underconfidence, and one below indicates overconfidence. Bin population matters: a sparse bin can fluctuate substantially, while ECE weights bins by their population. Risk-coverage plots sort predictions by confidence, showing accepted-case error against coverage, not training progress or a threshold on the horizontal axis. These test diagnostics do not define a new test-tuned policy. Near-diagonal regions coexist with near-certain errors. All fitted GCN temperatures are below one, so scaling sharpens rather than uniformly softens their predictions.
 
 The implemented threshold grid is 0, 0.01, ..., 1.00. Candidates must accept at least `max(1, floor(0.05 * N_calibration))` nodes and achieve at least **90% empirical calibration accepted-case accuracy**. The objective maximises coverage, breaking ties towards the smallest threshold. If none qualifies, 1.01 rejects everything. The rule is empirical, without a statistical risk guarantee.
 
@@ -122,7 +126,20 @@ The implemented threshold grid is 0, 0.01, ..., 1.00. Candidates must accept at 
 | GCN / 43 | 0.00 | 100.00 | 93.57 |
 | GCN / 44 | 0.00 | 100.00 | 94.19 |
 
-**All GCN thresholds are zero.** Its full calibration set already exceeds 90%, so 100% coverage maximises the objective. This is the expected result of the chosen objective, not a numerical fitting fault. It nevertheless accepts low-confidence cases as well as confident mistakes and fails the intended ambiguity-routing goal. MLP rejects roughly 26-29%, but seed 44 accepted test accuracy is 89.66%, below the fitting target: calibration performance does not guarantee held-out performance. The locked rule is reported unchanged after test inspection. A stricter risk bound, explicit review budget or ambiguity margin would need separate validation; none is claimed as implemented or tested here.
+**All GCN thresholds are zero.** Its full calibration set already exceeds 90%, so 100% coverage maximises the objective. This is the expected result of the chosen objective, not a numerical fitting fault. It nevertheless accepts low-confidence cases as well as confident mistakes and fails the intended ambiguity-routing goal. MLP rejects roughly 26-29%, but seed 44 accepted test accuracy is 89.66%, below the fitting target: calibration performance does not guarantee held-out performance.
+
+### Threshold experiment and decision record
+
+| Item | Recorded finding or decision |
+| --- | --- |
+| Experimental objective | Fit on calibration data only; require at least 90% empirical accepted-case accuracy and maximise coverage under the stated grid rule. |
+| Observed GCN outcome | Threshold 0 for all three seeds, 100% test coverage; every selected failure is accepted. |
+| Engineering interpretation | The fitting objective is satisfied, but useful ambiguity routing is not. Analysis completion is not evidence of business-goal attainment. |
+| Current decision | Preserve the locked code, weights, thresholds and results. Test labels and error cases have already been inspected and will not be used for retrospective policy tuning. |
+| Requirement clarification | A separate Ed follow-up question has been prepared; sending is not confirmed and no reply is recorded. No waiver or teacher approval is inferred while clarification is outstanding. |
+| Future, unvalidated options | A risk bound, explicit review budget or ambiguity margin would require a new validation protocol with independent evaluation data; none is implemented or tested here. |
+
+The post-consultation documentation record is [reports/post_checkoff_record.md](reports/post_checkoff_record.md). It separates the student's reported check-off completion from unresolved interpretation of the final requirements.
 
 ## 7. Embedding visualisation and interpretation
 
@@ -136,6 +153,8 @@ These t-SNE plots use test-node 64-dimensional hidden representations, ground-tr
 
 Cases come from the fixed seed-42 GCN test predictions. The selection rule samples high confidence, low degree, low margin and high degree before filling unique cases; it is not a random error sample. Confidence below is temperature-scaled. All five are accepted by GCN because its threshold is zero.
 
+The student reports that the tutor suggested adding failure analysis to the experimental record. The following strengthens that record using existing predictions and diagnostics; it is a documentation revision, not a new experiment or a claim of formal approval.
+
 | Node | True -> GCN | GCN confidence | Degree | MLP prediction / confidence / accepted |
 | --- | --- | --- | --- | --- |
 | 16052 | government -> company | 1.000000 | 266 | company / 0.906357 / True |
@@ -144,15 +163,15 @@ Cases come from the fixed seed-42 GCN test predictions. The selection rule sampl
 | 18785 | politician -> government | 0.263498 | 2 | government / 0.408311 / False |
 | 953 | tvshow -> company | 0.999799 | 4 | politician / 0.344795 / False |
 
-1. **16052: confident neighbourhood conflict.** Degree 266; all 161 training-labelled neighbours are company, and 99.6% of neighbours are predicted company. This suggests topology can reinforce an incorrect category. MLP is also wrong, so graph aggregation alone is not proven responsible; feature ambiguity or label mismatch is possible but unverified. Review original content before diagnosing a wrong label.
-2. **9254: near-certain error.** All eight training-labelled neighbours are politicians, although the node is labelled tvshow. Both models confidently predict politician. Shared feature/context ambiguity is plausible. Temperature scaling raises confidence rather than correcting the class. This case refutes treating a high score as a correctness guarantee.
-3. **22382: sparse local support.** Its single non-self neighbour has a training tvshow label; GCN predicts tvshow at 0.816. MLP also fails, predicting company, but its threshold sends the case to review. Sparse context motivates checking degree-sensitive error patterns; a single case does not establish that low degree causes failure.
-4. **18785: explicit ambiguity missed by policy.** Government is predicted at 0.2635, with top-two margin 0.0015. Degree is two and the one training-labelled neighbour is politician. MLP also predicts government but refers it. The GCN decision is almost tied and should attract human attention, yet the current maximum-coverage rule accepts it.
-5. **953: confident error despite mixed labelled context.** Degree four, with one tvshow and one company training neighbour; all neighbours' predicted labels agree with company. GCN predicts company at 0.9998. MLP predicts politician at 0.3448 and refers it. Local prediction agreement can reinforce error rather than establish truth.
+1. **16052: confident neighbourhood conflict.** **Evidence:** degree 266; all 161 training-labelled neighbours are company, 99.6% of neighbours are predicted company, and both models misclassify it as company. **Hypothesis:** feature and neighbourhood context may reinforce the wrong category. **Limit:** the MLP error prevents attributing the failure to graph aggregation alone; neither a semantic trigger nor an incorrect annotation is established. **Future action, unvalidated:** inspect original content/annotation and perform a controlled feature-versus-topology ablation on an independent evaluation protocol before deciding the cause.
+2. **9254: near-certain error.** **Evidence:** all eight training-labelled neighbours are politicians, although the node is labelled tvshow; both models predict politician, and temperature scaling increases GCN confidence to approximately one without correcting its class. **Hypothesis:** shared feature/context ambiguity may drive the error. **Limit:** neither high confidence nor neighbour agreement proves the prediction correct, and no page-text evidence identifies the ambiguity. **Future action, unvalidated:** audit original content and study high-confidence errors under a separately validated review rule.
+3. **22382: sparse local support.** **Evidence:** the single non-self neighbour has a training tvshow label; GCN predicts tvshow at 0.816, while MLP predicts company and refers the case. **Hypothesis:** sparse context may leave the representation sensitive to one neighbouring page. **Limit:** one example and the MLP error cannot establish that low degree caused the failure. **Future action, unvalidated:** evaluate degree-stratified error rates and controlled edge perturbations using independent evaluation data.
+4. **18785: explicit ambiguity missed by policy.** **Evidence:** GCN predicts government at 0.2635, with a top-two margin of 0.0015; degree is two, and its one training-labelled neighbour is politician. MLP also predicts government but refers it. **Hypothesis:** the near-tied scores indicate insufficient class separation. **Limit:** the scores establish ambiguity, not its semantic cause, and do not determine a justified replacement threshold. **Future action, unvalidated:** predefine a margin or review-budget criterion and validate it separately. The current all-accept policy demonstrably misses this ambiguity.
+5. **953: confident error with mixed labelled context.** **Evidence:** degree four; one training neighbour is tvshow and one company, yet all neighbours' predicted labels agree with company. GCN predicts company at 0.9998; MLP predicts politician at 0.3448 and refers it. **Hypothesis:** local representation/prediction agreement may reinforce the wrong class. **Limit:** prediction agreement is not ground truth, and the differing MLP error does not isolate a causal graph effect. **Future action, unvalidated:** inspect content and compare feature/topology ablations before choosing an intervention.
 
 ![Training-neighbour label context for the five GCN errors](figures/failure_neighbourhood.png)
 
-These are numeric hypotheses, not causal explanations. Without page text/names, semantic triggers and annotation mistakes remain unverified; controlled ablation/content review is needed. Cases support reporting, not further tuning.
+The plot counts only neighbours with training labels; those labels are used for post-evaluation diagnosis, never as model inputs or messages. Counts are not normalised and the very different node degrees should be considered. Without page text/names or controlled interventions, semantic triggers, annotation mistakes and causal mechanisms remain unverified. The five selected cases support reporting, not prevalence estimates or further tuning on this test set. Every future action above remains proposed work.
 
 ## 9. Computational cost and measured scope
 
@@ -199,9 +218,19 @@ Choose GCN for the next assisted-classification prototype: its accuracy/F1 gain 
 
 External validity remains limited by one graph, one random split, globally supplied features, no inductive/time-shift evaluation, one small architecture and no extensive hyperparameter search. Three initialisations do not replace repeated splits. Small-bin ECE and five selected failures cannot establish deployment safety. New policy development must reserve independent evaluation data after the present test inspection. No proposed improvement in this section is represented as a completed experiment.
 
+### Measured status of the five acceptance criteria
+
+| Criterion | Evidence and status |
+| --- | --- |
+| Data integrity and split controls | Audit and six targeted checks completed; selected properties verified, not a proof against every possible defect or upstream leakage. |
+| Matched benchmark | Completed for MLP/GCN, three initialisations on one fixed split, with per-class metrics, Macro-F1 and AUROC. |
+| Confidence and review analysis | Temperature/threshold fitting, reliability and held-out coverage/error analysis completed. Useful ambiguity routing is **not achieved** by the GCN threshold-zero policy. |
+| Interpretation and failures | Two t-SNE views and five evidence-led failure analyses completed; causal explanations and proposed interventions remain unvalidated. |
+| Resources and reproduction | Parameter counts, synchronised forward timings, GPU allocator peaks and checkpoint reloads recorded. GCN 82.98 MiB is below the original 4 GiB planning target; deployment-scale and dedicated-device performance are untested. |
+
 ## 12. Historical one-page feasibility review - 15 October 2026
 
-The following preserves the **preliminary** review; its unfinished-experiment statements describe 15 October, not current results. The original editable version is [feasibility_review_draft.md](feasibility_review_draft.md). The [updated review dated 21 October](feasibility_review_current.md) accurately discloses the completed experiments. The student reports posting the review and check-off request on Ed on 21 October; tutor confirmation is still pending. Neither document nor posting establishes a recorded check-off.
+The following preserves the **preliminary** review; its unfinished-experiment statements describe 15 October, not current results. The original editable version is [feasibility_review_draft.md](feasibility_review_draft.md). The [updated review dated 21 October](feasibility_review_current.md) preserves the status known when it was written. Check-off is now completed (student-confirmed); both dated reviews remain historical snapshots without retrospective changes. The update is recorded in [reports/post_checkoff_record.md](reports/post_checkoff_record.md).
 
 **Project:** Confidence-aware Facebook Page Classification - Normal GNN
 
@@ -229,7 +258,7 @@ The following preserves the **preliminary** review; its unfinished-experiment st
 
 ## 13. Submission status
 
-The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.4. Turnitin submission/receipt, the tutor-recorded check-off and the later PR review response remain separate outstanding requirements; the report does not establish their completion. The selected Normal problem does not qualify for the Hard-only implementation criterion.
+The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion.
 
 ## Artificial Intelligence Usage Disclosure
 
