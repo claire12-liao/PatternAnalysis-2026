@@ -1,3 +1,9 @@
+# Latest exact-search and weighted-loss update - 26 October 2026
+
+Exact score-boundary search restores nonzero politician prediction coverage without changing unweighted model labels. Three weighted GCNs increase mean politician recall to 92.34% while precision decreases to 88.22%; accepted errors are not uniformly reduced. The post-hoc status, seed-43 shortfall, random-quality-review workload and unresolved external validation are recorded in [refinement/README.md](refinement/README.md). Eighteen checks and both 2254-case reloads pass. Original studies and Colab remain preserved.
+
+## Earlier records
+
 # Latest robustness and engineering update - 26 October 2026
 
 Six new CPU runs on a precommitted five-role within-graph split separate temperature and policy fitting. All policies precede final-role evaluation. Class-aware thresholding is implemented and compared, including its politician auto-coverage failure, 7/5/5 wrongly accepted true politicians, and 32/33/29 total accepted errors. [Full record](five_role/README.md). Twelve targeted checks pass; the first 97% runner also gains dataset/identity/temperature/partial-output guards.

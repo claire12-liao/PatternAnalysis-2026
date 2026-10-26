@@ -1,3 +1,5 @@
+**Historical 0.01-grid study.** Subsequent exact-search/weighted refinement is documented in [../refinement/README.md](../refinement/README.md). The original numbers below remain unchanged.
+
 # Five-role robustness study and class-aware triage
 
 Yuhan Liao - 49839991 - 26 October 2026
