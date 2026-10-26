@@ -32,8 +32,12 @@ def save(path, data):
 def accepted_mask(probabilities, threshold):
     """Make label-free decisions; threshold > 1 explicitly refers every case."""
     import torch
-    if probabilities.ndim != 2 or not torch.isfinite(probabilities).all():
+    if probabilities.ndim != 2 or probabilities.shape[0] == 0 or probabilities.shape[1] < 2 or not torch.isfinite(probabilities).all():
         raise ValueError("Finite row-by-class probabilities required")
+    if bool((probabilities < 0).any()) or bool((probabilities > 1).any()):
+        raise ValueError("Probabilities must be in [0, 1]")
+    if not torch.allclose(probabilities.sum(1), torch.ones_like(probabilities.sum(1)), atol=1e-5, rtol=1e-5):
+        raise ValueError("Probability rows must sum to one")
     if not math.isfinite(threshold) or threshold < 0:
         raise ValueError("Finite nonnegative threshold required")
     return probabilities.max(dim=1).values >= threshold
@@ -66,14 +70,14 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "runs/policy97_followup")
     parser.add_argument("--data", type=Path)
     args = parser.parse_args()
-    if (args.output / "FOLLOWUP_RESULTS.json").exists():
-        raise SystemExit("Completed experiment exists; choose a new --output to preserve it.")
+    if args.output.exists():
+        raise SystemExit("Choose a new --output; partial experiment folders are preserved too.")
     args.output.mkdir(parents=True, exist_ok=True)
     sys.path.insert(0, str(args.source_dir.resolve()))
 
     import numpy as np
     import torch
-    from dataset import CLASS_NAMES, DATA_SHA256, DEFAULT_PATH, make_pyg_graph
+    from dataset import CLASS_NAMES, DATA_SHA256, DEFAULT_PATH, make_pyg_graph, sha256
     from evaluation import choose_threshold, classification_metrics, selective_metrics, split_validation_roles
     from modules import make_model, normalized_adjacency
 
@@ -101,6 +105,8 @@ def main():
     }
     save(args.output / "FROZEN_PROTOCOL.json", protocol)
     protocol_sha = digest(args.output / "FROZEN_PROTOCOL.json")
+    if sha256(args.data or DEFAULT_PATH) != DATA_SHA256:
+        raise ValueError("Dataset differs from the pinned course archive")
     graph = make_pyg_graph(args.data or DEFAULT_PATH, 42)
     _, calibration = split_validation_roles(graph.y, graph.validation_mask, 43)
     adjacency = normalized_adjacency(graph.edge_index, graph.num_nodes)
@@ -112,6 +118,10 @@ def main():
         folder = args.runs_dir / f"gcn_seed{seed}"
         checkpoint = torch.load(folder / "model.pt", map_location="cpu", weights_only=True)
         assert checkpoint["phase"] == "final" and checkpoint["dataset_sha256"] == DATA_SHA256
+        assert checkpoint["model"] == "gcn" and checkpoint["initialization_seed"] == seed
+        assert checkpoint["split_seed"] == 42 and checkpoint["validation_role_seed"] == 43
+        if not math.isfinite(checkpoint["temperature"]) or checkpoint["temperature"] <= 0:
+            raise ValueError("A finite positive temperature is required")
         torch.testing.assert_close(graph.feature_mean, checkpoint["feature_mean"])
         torch.testing.assert_close(graph.feature_scale, checkpoint["feature_scale"])
         model = make_model("gcn", **checkpoint["model_config"])

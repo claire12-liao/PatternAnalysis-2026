@@ -35,6 +35,8 @@ def main():
     torch.set_num_threads(4)
     policy = json.loads(args.policy.read_text(encoding="utf-8"))
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
+    if checkpoint["phase"] != "final" or checkpoint["model"] != "gcn":
+        raise ValueError("This policy requires an original final GCN checkpoint")
     data = args.data or DEFAULT_PATH
     if sha256(data) != DATA_SHA256:
         raise ValueError("Expected the pinned course dataset")
@@ -43,6 +45,10 @@ def main():
         raise ValueError("Policy and checkpoint configuration mismatch")
     if not math.isclose(policy["temperature"], checkpoint["temperature"], rel_tol=0, abs_tol=0):
         raise ValueError("Policy must use the original saved temperature")
+    if not math.isfinite(policy["temperature"]) or policy["temperature"] <= 0:
+        raise ValueError("A finite positive temperature is required")
+    if policy["validation_role_seed"] != checkpoint["validation_role_seed"]:
+        raise ValueError("Policy and checkpoint calibration roles differ")
     graph = make_pyg_graph(data, checkpoint["split_seed"])
     torch.testing.assert_close(graph.feature_mean, checkpoint["feature_mean"])
     torch.testing.assert_close(graph.feature_scale, checkpoint["feature_scale"])

@@ -4,13 +4,13 @@
 
 **Selected project:** Multi-layer GNN, Normal difficulty.
 
-**Update: 26 October 2026.** Feasibility check-off completed (student-confirmed). The original 21 October training runs and 90% policy are preserved. A separate, frozen 97% policy follow-up is now implemented and reported in Section 6 as post-hoc original-test reuse, not independent confirmation. Colab remains the original baseline snapshot.
+**Update: 26 October 2026.** Feasibility check-off completed (student-confirmed). The original 21 October training runs and 90% policy are preserved. A separate, frozen 97% policy follow-up is now implemented and reported in Section 6 as post-hoc original-test reuse, not independent confirmation. A further CPU robustness study uses five disjoint label roles and separately fitted class thresholds; its same-graph limitations are explicit. Colab remains the original baseline snapshot.
 
 ## 1. Purpose and principal findings
 
 This Facebook-page classification assistant combines 128-dimensional page features and connections using a two-layer graph convolutional network (GCN). It predicts television-show, government, company or politician labels. A matched feature-only multilayer perceptron (MLP) tests graph context's value. The engineering question is whether classification and confidence gains justify additional cost, and whether uncertainty can guide human review.
 
-Across three initialisations on one fixed split, GCN reaches **93.84% test accuracy**, versus **80.77% for MLP**, a **13.07 percentage-point** gain. GCN Macro-F1 is 0.9333 versus 0.7884. Nevertheless, very confident mistakes remain. The original fitted GCN threshold is zero, accepting every case: it meets the original 90% empirical accuracy target but fails to provide useful ambiguity routing. A 26 October follow-up raises the calibration acceptance target to 97% while preserving the models and temperatures. On the previously inspected original test, mean referral is 10.74% and accepted-case accuracy is 97.07%; whole-test classification accuracy remains 93.84%. One seed reaches only 96.99%. This is a promising routing extension, not an independently confirmed deployment policy.
+Across three initialisations on one fixed split, GCN reaches **93.84% test accuracy**, versus **80.77% for MLP**, a **13.07 percentage-point** gain. GCN Macro-F1 is 0.9333 versus 0.7884. Nevertheless, very confident mistakes remain. The original fitted GCN threshold is zero, accepting every case: it meets the original 90% empirical accuracy target but fails to provide useful ambiguity routing. A 26 October follow-up raises the calibration acceptance target to 97% while preserving the models and temperatures. On the previously inspected original test, mean referral is 10.74% and accepted-case accuracy is 97.07%; whole-test classification accuracy remains 93.84%. One seed reaches only 96.99%. This is a promising routing extension, not an independently confirmed deployment policy. A further, prospectively fixed within-graph study separates temperature/policy fitting and evaluates a class-aware alternative; Section 6 reports its gains and class-coverage cost without replacing the original results.
 
 ![Test accuracy and Macro-F1 across three initialisation seeds](figures/model_comparison.png)
 
@@ -50,6 +50,8 @@ Both networks use **128 -> 64 -> 4**, ReLU, dropout 0.5 and **8,516 parameters**
 | `evaluation.py` | Multiclass metrics, temperature fitting, ECE and original selective prediction |
 | `policy97_experiment.py` | Separate fixed 97% policy fitting and post-hoc evaluation; no model retraining |
 | `predict_with_policy.py` | Apply a checkpoint-bound policy and export label-free acceptance/review decisions |
+| `validation_study.py`, `predict_study_policy.py` | Five disjoint label roles, new CPU training, class-aware comparison and saved-study prediction |
+| `test_policy_controls.py` | Six policy failure-mode and experiment-protection checks |
 | `audit_dataset.py` | Numeric dataset and split-provenance audit |
 | `test_data_pipeline.py`, `test_models.py` | Six data/model correctness checks |
 
@@ -165,6 +167,28 @@ For the five original failure cases in Section 8, seed 42's new rule refers ambi
 
 The [follow-up record](reports/policy97/README.md), [full aggregate/per-class results](reports/policy97/FOLLOWUP_RESULTS.json) and [frozen policies](policies) retain all outcomes and provenance. The new prediction entry point exports decisions without reference labels; checkpoint/data bindings and a CPU replay of 4,496 seed-42 predictions check implementation consistency. A future untouched evaluation remains necessary for independent policy confirmation. The original GPU profile does not measure the additional end-to-end policy/review workflow.
 
+### Five-role robustness study and class-aware policy
+
+To separate probability fitting from acceptance-policy fitting, a second study fixed split seed **20261026** before its final evaluation. Disjoint roles are **13,481 training, 2,245 selection, 2,245 temperature, 2,245 policy and 2,254 final nodes**. Scaling uses training features, selection Macro-F1 chooses checkpoints, temperature fits its own labels, and thresholds fit another role. Both matched MLP/GCN models were actually retrained on CPU for seeds 42/43/44 with the original architecture/hyperparameters. All six models/policies were saved and hash-recorded before final-role metrics; no settings were changed afterwards.
+
+This is a **prospectively fixed within-graph resplit of previously studied data**, not new external data or restored project-level independence. The new test cases and weights differ from the original experiment: the original 93.84% benchmark and seed-44 96.99% selective result are retained. New-split numbers cannot be substituted for those results or interpreted as matched classification gains.
+
+The Global97 control maximises policy-role coverage at 97% empirical accepted accuracy. The class-aware alternative, Class98, fits a threshold for each **predicted** class at 98% empirical accepted accuracy, a predeclared one-point fitting buffer above the desired 97%. Each class must retain at least `max(50, ceil(0.05 * predicted_class_policy_count))` cases; an infeasible class uses 1.01 and is fully referred. The same 0.01 threshold grid and smaller-threshold tie apply. Decisions do not receive true labels or known-error IDs. The buffer is heuristic, not a statistical guarantee.
+
+| Study seed | Global97 review (%) | Global97 accepted accuracy (%) | Class98 review (%) | Class98 accepted accuracy (%) |
+| --- | ---: | ---: | ---: | ---: |
+| 42 | 18.54 | 97.82 | 30.97 | 97.94 |
+| 43 | 15.66 | 97.53 | 30.79 | 97.88 |
+| 44 | 17.57 | 97.74 | 32.17 | 98.10 |
+
+Mean Global97 referral is **17.26%**, with **97.70%** accepted accuracy. Mean Class98 referral is **31.31%**, with **97.98%** accepted accuracy. The new models' full-population accuracy is **93.52%**, unchanged by the policy. All three observed accepted accuracies exceed the desired 97%; the 98% fitting buffer is not met by every final run/group, and no future guarantee follows. All six runs, including the lower-performing MLP controls, are retained in the [full study record](reports/five_role/README.md).
+
+![Five-role within-graph study: acceptance quality improves at the cost of more human review](figures/five_role_policy_comparison.png)
+
+**Class-coverage failure remains visible.** No politician-prediction threshold met Class98's fitting target/minimum in any GCN seed, so all predictions of politician are referred. Nonempty accepted predicted-class groups exceed 97% observed accuracy here, but **7/5/5 true politicians are wrongly accepted as other classes**. Accepted accuracy conditional on the true politician class is 0% in this candidate because none of the correct politician predictions is accepted. This exposes a serious true-class recall/coverage trade-off; it is not uniform class safety. The candidate still accepts **32/33/29 errors** across seeds. It is a conservative research alternative, not an unconditional deployment recommendation.
+
+The study's saved-model CPU reload reproduces all 2,254 seed-42 predictions and routes (1,556 accepted; 698 referred), without reference labels in the output/decision function. **Twelve checks now pass**, including the original six and six new controls for malformed probabilities, class infeasibility, class-based routing, role separation, checkpoint mismatch and evidence-preserving output guards. The original 97% runner now verifies the actual dataset checksum, model/seed/split/calibration roles and positive temperature, and refuses partial-output overwrites. These safeguards repair identifiable implementation risks, not every possible defect or model error.
+
 ## 7. Embedding visualisation and interpretation
 
 ![MLP seed-42 hidden representations with ground-truth colours](figures/mlp_embedding.png)
@@ -249,11 +273,21 @@ python predict_with_policy.py --policy policies/gcn_seed42_policy97.json \
 
 The first command reproduces the explicitly post-hoc follow-up on CPU without retraining; use `--runs-dir` and `--data` for other private locations. The second applies the frozen seed-42 policy and exports `node_id,predicted_label,predicted_class,confidence,accepted,route,policy_id`, with route `automatic_candidate` or `human_review`. Reference labels are not exported or used for decisions, and no accuracy is calculated by this prediction command. Hash/seed/configuration/temperature mismatches are rejected. Existing outputs are not overwritten. Newly trained checkpoints require their own calibration-fitted policy; the supplied hashes bind these policies to the actual original weights. `predict.py` intentionally retains the old checkpoint policy. No dataset, checkpoint or per-node labelled follow-up export is added to Git.
 
+### Reproduce the five-role CPU study
+
+```bash
+python validation_study.py --output runs/five_role_study
+python predict_study_policy.py --study-dir runs/five_role_study \
+  --run gcn_seed42 --policy class98 --output runs/study_routes.csv
+```
+
+This new study actually retrains six CPU models; the policy-reload command alone does not retrain. The study output must not already exist. The saved checkpoint, frozen policy files and split/scaling artifact are private prerequisites for the reload. Use `--policy global97` for the control. The CSV reports predicted label/class, confidence, acceptance, route and reason without ground-truth labels or calculated accuracy. See [reports/five_role](reports/five_role/README.md) for full scope, versions and preserved outcomes. The unchanged Colab continues to show the original baseline, not either additional study.
+
 ## 11. Engineering recommendation and remaining limitations
 
-Choose GCN for the next assisted-classification prototype: its accuracy/F1 gain is substantial on this split for modest absolute inference/memory cost. The separate 97% policy provides a concrete review queue while preserving the original benchmark, but is not independently confirmed. Prioritise untouched evaluation, class-specific politician errors, and high-confidence mistakes before treating it as a deployment rule. MLP is a cheaper fallback when graph access is unavailable, though its quality is substantially lower here.
+Choose GCN for the next assisted-classification prototype: its accuracy/F1 gain is substantial on this split for modest absolute inference/memory cost. The separate 97% policy provides a concrete review queue while preserving the original benchmark. The five-role study strengthens separation of fitting roles; its Class98 alternative trades further coverage for accepted-case quality but has an explicit politician-coverage failure. Neither is independently confirmed on new external data. Prioritise untouched evaluation, class-specific politician errors, and high-confidence mistakes before treating it as a deployment rule. MLP is a cheaper fallback when graph access is unavailable, though its quality is substantially lower here.
 
-External validity remains limited by one graph, one random split, globally supplied features, no inductive/time-shift evaluation, one small architecture and no extensive hyperparameter search. Three initialisations do not replace repeated splits. Small-bin ECE and five selected failures cannot establish deployment safety. Further policy development must reserve independent evaluation data after the present test inspection. The 97% policy is implemented as a transparent post-hoc extension; independent policy confirmation, statistical risk control and human-review effectiveness remain unestablished.
+External validity remains limited by one graph, one random split, globally supplied features, no inductive/time-shift evaluation, one small architecture and no extensive hyperparameter search. Three initialisations do not replace repeated splits. Small-bin ECE and five selected failures cannot establish deployment safety. The additional within-graph resplit does not remove this project-level data reuse; genuinely independent external or temporal evaluation is still unavailable. The 97% policy is implemented as a transparent post-hoc extension; independent policy confirmation, statistical risk control and human-review effectiveness remain unestablished.
 
 ### Measured status of the five acceptance criteria
 
@@ -261,7 +295,7 @@ External validity remains limited by one graph, one random split, globally suppl
 | --- | --- |
 | Data integrity and split controls | Audit and six targeted checks completed; selected properties verified, not a proof against every possible defect or upstream leakage. |
 | Matched benchmark | Completed for MLP/GCN, three initialisations on one fixed split, with per-class metrics, Macro-F1 and AUROC. |
-| Confidence and review analysis | Original calibration/threshold analysis completed, with failed routing under threshold zero preserved. The separate 97% policy produces 10.74% mean referral in post-hoc original-test reuse; independent confirmation and every-seed/per-class 97% attainment are not established. |
+| Confidence and review analysis | Original calibration/threshold analysis completed, with failed routing under threshold zero preserved. The first 97% policy produces 10.74% mean referral in post-hoc reuse. A five-role study evaluates global/class-aware rules once with separate fitting roles, retaining class-coverage failures. Future/per-class guarantees and external confirmation are not established. |
 | Interpretation and failures | Two t-SNE views and five evidence-led failure analyses completed; causal explanations and proposed interventions remain unvalidated. |
 | Resources and reproduction | Parameter counts, synchronised forward timings, GPU allocator peaks and checkpoint reloads recorded. GCN 82.98 MiB is below the original 4 GiB planning target; deployment-scale and dedicated-device performance are untested. |
 
@@ -295,13 +329,13 @@ The following preserves the **preliminary** review; its unfinished-experiment st
 
 ## 13. Submission status
 
-The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.5; its Normal GNN, marking and submission requirements are unchanged from Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion. This 26 October revision adds policy code, frozen thresholds, aggregate evidence, a comparison figure and an explicitly post-hoc analysis; it does not replace the original benchmark or update Colab.
+The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.5; its Normal GNN, marking and submission requirements are unchanged from Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion. The 26 October revisions add frozen-policy code/evidence, an explicitly post-hoc analysis, a separate six-run five-role CPU study, a class-aware alternative and twelve software checks. Neither replaces original results or updates Colab. The student confirms no additional data or Ed reply is available; external validation, zero-error automation and grading approval cannot be asserted.
 
 ## Artificial Intelligence Usage Disclosure
 
 **ChatGPT and Codex** provided substantial assistance with interpreting requirements, finding/checking references and the course data link, planning experiments, scaffolding and refining data/model/training/evaluation code and tests, debugging environment/SSH issues, preparing plotting and reporting material, interpreting results, and producing the Colab/tutor preparation material. This is broader than autocomplete; it is not represented as wholly independent manual coding. The GCN formulation is attributed to Kipf and Welling, and dataset handling to the cited course/PyG sources.
 
-Verification included the checksum/data audit, leakage and graph-normalisation checks, six passing software tests, five-epoch CPU feasibility runs, actual six-model Rangpur experiments, checkpoint reloading, prediction-CSV consistency checks and inspection of saved plots/errors. These checks verify particular properties, not every possible defect or deployment safety. The student remains responsible for understanding and explaining every submitted operation, loss and metric; AI-generated explanations must be checked against code and evidence. The original threshold-zero limitation and calibration regressions remain disclosed. AI also assisted with the separate 26 October 97% policy proposal, code, CPU analysis, provenance checks and documentation. Frozen policy hashes, unchanged original-source/checkpoint hashes, label-free replay, error-count accounting and negative binding checks verify specific properties. Seed 44's shortfall and post-hoc evaluation status are retained; the extension is not presented as independently validated.
+Verification included the checksum/data audit, leakage and graph-normalisation checks, six passing software tests, five-epoch CPU feasibility runs, actual six-model Rangpur experiments, checkpoint reloading, prediction-CSV consistency checks and inspection of saved plots/errors. These checks verify particular properties, not every possible defect or deployment safety. The student remains responsible for understanding and explaining every submitted operation, loss and metric; AI-generated explanations must be checked against code and evidence. The original threshold-zero limitation and calibration regressions remain disclosed. AI also assisted with the separate 26 October 97% policy proposal, code, CPU analysis, provenance checks and documentation. Frozen policy hashes, unchanged original-source/checkpoint hashes, label-free replay, error-count accounting and negative binding checks verify specific properties. Seed 44's shortfall and post-hoc evaluation status are retained. AI also assisted with the prospectively fixed five-role study, actual CPU retraining/reload, class-aware alternative and additional controls. All six results, unsupported politician auto-coverage and residual errors are disclosed; neither extension is presented as independent external validation.
 
 ## References
 

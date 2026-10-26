@@ -1,3 +1,11 @@
+# Latest robustness and engineering update - 26 October 2026
+
+Six new CPU runs on a precommitted five-role within-graph split separate temperature and policy fitting. All policies precede final-role evaluation. Class-aware thresholding is implemented and compared, including its politician auto-coverage failure, 7/5/5 wrongly accepted true politicians, and 32/33/29 total accepted errors. [Full record](five_role/README.md). Twelve targeted checks pass; the first 97% runner also gains dataset/identity/temperature/partial-output guards.
+
+The student confirms no extra data or Ed reply is available. External validation, universal 97% reliability, zero errors and human-review effectiveness remain unestablished. Colab stays unchanged. Original benchmark and prior post-hoc experiment remain historical records.
+
+## Earlier consultation and first policy update
+
 # Consultation and policy experiment record
 
 ## Current update - 26 October 2026
