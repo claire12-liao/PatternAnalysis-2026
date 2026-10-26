@@ -1,3 +1,7 @@
+## Latest confidence investigation - 26 October
+
+A fixed six-model confidence study and five-case edge-isolation diagnosis are now complete; [full record](consensus/README.md). Mean routing reduces accepted errors 32 to 29 and missed-politician errors 7 to 5 against prespecified seed42, with lower coverage and 6.23x measured CPU latency. Unanimity adds no final-case benefit; politician ECE worsens and a shared >=.99 politician error remains. This is post-hoc, with 26 targeted tests and two negative integration checks; no external validation or human correction is claimed. Original results and Colab remain unchanged.
+
 # Latest exact-search and weighted-loss update - 26 October 2026
 
 Exact score-boundary search restores nonzero politician prediction coverage without changing unweighted model labels. Three weighted GCNs increase mean politician recall to 92.34% while precision decreases to 88.22%; accepted errors are not uniformly reduced. The post-hoc status, seed-43 shortfall, random-quality-review workload and unresolved external validation are recorded in [refinement/README.md](refinement/README.md). Eighteen checks and both 2254-case reloads pass. Original studies and Colab remain preserved.
