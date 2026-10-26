@@ -1,3 +1,17 @@
+# Consultation and policy experiment record
+
+## Current update - 26 October 2026
+
+The completed feasibility check-off remains student-confirmed. The original 90% threshold-zero outcome and all training evidence are retained. A separate frozen 97% empirical calibration acceptance objective has now been implemented without retraining or changing temperatures. It yields thresholds 0.73/0.76/0.74. Mean referral on the historically inspected original test is 10.74%, and accepted-case accuracy is 97.07%; full-population model accuracy remains 93.84%. Seed 44 reaches 96.99%, below target, and is not retuned.
+
+All policies were fitted on calibration labels and frozen before this follow-up calculated reused-test results. Choosing the new objective after historical test inspection makes this a post-hoc extension, not independent confirmation. High-confidence errors and class differences remain. [Method, results, reproduction and limitations](policy97/README.md).
+
+The student's last Ed status was no reply; no teaching-team approval is inferred. The formal report and existing PR now include the extension; Colab remains the original baseline snapshot. Turnitin receipt and later formal PR-review response are separate external states.
+
+## Historical documentation record - 22 October 2026
+
+The following records the earlier decision before the additional experiment. Its then-unimplemented statements are historical, not current policy status.
+
 # Post-consultation documentation and threshold decision record
 
 This record documents the completed feasibility check-off and tutor feedback as reported by the student, alongside observed results and the pending Ed clarification.

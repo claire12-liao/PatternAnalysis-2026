@@ -4,13 +4,13 @@
 
 **Selected project:** Multi-layer GNN, Normal difficulty.
 
-**Documentation update: 22 October 2026.** Feasibility check-off completed (student-confirmed); failure analysis expanded. Recorded formal experiments are unchanged.
+**Update: 26 October 2026.** Feasibility check-off completed (student-confirmed). The original 21 October training runs and 90% policy are preserved. A separate, frozen 97% policy follow-up is now implemented and reported in Section 6 as post-hoc original-test reuse, not independent confirmation. Colab remains the original baseline snapshot.
 
 ## 1. Purpose and principal findings
 
 This Facebook-page classification assistant combines 128-dimensional page features and connections using a two-layer graph convolutional network (GCN). It predicts television-show, government, company or politician labels. A matched feature-only multilayer perceptron (MLP) tests graph context's value. The engineering question is whether classification and confidence gains justify additional cost, and whether uncertainty can guide human review.
 
-Across three initialisations on one fixed split, GCN reaches **93.84% test accuracy**, versus **80.77% for MLP**, a **13.07 percentage-point** gain. GCN Macro-F1 is 0.9333 versus 0.7884. Nevertheless, very confident mistakes remain. The fitted GCN threshold is zero, accepting every case: it meets the original empirical accuracy target but fails to provide useful ambiguity routing. The recommendation is a stronger classification prototype with human oversight, rather than automatic deployment under the present policy.
+Across three initialisations on one fixed split, GCN reaches **93.84% test accuracy**, versus **80.77% for MLP**, a **13.07 percentage-point** gain. GCN Macro-F1 is 0.9333 versus 0.7884. Nevertheless, very confident mistakes remain. The original fitted GCN threshold is zero, accepting every case: it meets the original 90% empirical accuracy target but fails to provide useful ambiguity routing. A 26 October follow-up raises the calibration acceptance target to 97% while preserving the models and temperatures. On the previously inspected original test, mean referral is 10.74% and accepted-case accuracy is 97.07%; whole-test classification accuracy remains 93.84%. One seed reaches only 96.99%. This is a promising routing extension, not an independently confirmed deployment policy.
 
 ![Test accuracy and Macro-F1 across three initialisation seeds](figures/model_comparison.png)
 
@@ -18,7 +18,7 @@ The comparison summarises the matched runs, including their variability; it does
 
 ## 2. Data, preprocessing and leakage controls
 
-The course-linked [Facebook Page-Page mirror](https://github.com/gayanku/facebook_page-page_dataset) provides **22,470 nodes and 128 finite features per node**. The Version 2.4 specification (Section 2.1 and Appendix A.6) explicitly directs students to this modified Gayanku FacebookPagePage source because the original link is unavailable. This is already the source used for all recorded experiments; the clarification requires no dataset substitution or retraining. Class counts are tvshow 6,495; government 6,880; company 5,768; politician 3,327. Features are a supplied SVD compression of 4,714 description-token indicators; their upstream construction is not claimed as training-only.
+The course-linked [Facebook Page-Page mirror](https://github.com/gayanku/facebook_page-page_dataset) provides **22,470 nodes and 128 finite features per node**. The Version 2.5 specification (Section 2.1 and Appendix A.6) explicitly directs students to this modified Gayanku FacebookPagePage source because the original link is unavailable. This is already the source used for all recorded experiments; the clarification requires no dataset substitution or retraining. Class counts are tvshow 6,495; government 6,880; company 5,768; politician 3,327. Features are a supplied SVD compression of 4,714 description-token indicators; their upstream construction is not claimed as training-only.
 
 The archive is pinned to commit `ec01d02c39da4385052023ed28e36f0794f61dc8`, SHA-256 `7a1b8a0687515e9859d1ca649dc276825f5db44568894dfbb6b55ebc1cf6a9c1`. Because its numeric keys differ from the standard PyG loader, `dataset.py` constructs `torch_geometric.data.Data` explicitly, without loading pickled page names. The audit validates dimensions, labels, finite values, endpoints and edges.
 
@@ -33,7 +33,7 @@ There are 342,004 raw edge entries, including 179 duplicates and 358 self-loops.
 
 The 60/20/20 split uses per-class flooring and seed 42; role seed 43 partitions validation by class. Tests verify exhaustive, disjoint, reproducible splits and class coverage.
 
-This is **transductive classification**: all features/edges are available, including unlabelled validation/test nodes. Labels never enter inputs or messages. Only training labels enter optimisation; selection/calibration labels serve separate roles. Test labels do not choose settings, checkpoints or thresholds. Inductive performance on new pages/graphs is untested.
+This is **transductive classification**: all features/edges are available, including unlabelled validation/test nodes. Labels never enter inputs or messages. Only training labels enter optimisation; selection/calibration labels serve separate roles. In the original protocol, test labels did not choose settings, checkpoints or thresholds. The later 97% objective was selected after the original test results had been inspected; its thresholds use calibration labels only, but its reused-test comparison is explicitly post-hoc. Inductive performance on new pages/graphs is untested.
 
 ## 3. Algorithm and implementation
 
@@ -47,7 +47,9 @@ Both networks use **128 -> 64 -> 4**, ReLU, dropout 0.5 and **8,516 parameters**
 | `dataset.py` | Checksum-verified acquisition, validation, splits and training-only scaling |
 | `train.py` | Explicit training loop, selection, calibration, metrics, checkpoint and profiling |
 | `predict.py` | Reload saved weights, export predictions, embeddings and diagnostic figures |
-| `evaluation.py` | Multiclass metrics, temperature fitting, ECE and selective prediction |
+| `evaluation.py` | Multiclass metrics, temperature fitting, ECE and original selective prediction |
+| `policy97_experiment.py` | Separate fixed 97% policy fitting and post-hoc evaluation; no model retraining |
+| `predict_with_policy.py` | Apply a checkpoint-bound policy and export label-free acceptance/review decisions |
 | `audit_dataset.py` | Numeric dataset and split-provenance audit |
 | `test_data_pipeline.py`, `test_models.py` | Six data/model correctness checks |
 
@@ -128,18 +130,40 @@ The implemented threshold grid is 0, 0.01, ..., 1.00. Candidates must accept at 
 
 **All GCN thresholds are zero.** Its full calibration set already exceeds 90%, so 100% coverage maximises the objective. This is the expected result of the chosen objective, not a numerical fitting fault. It nevertheless accepts low-confidence cases as well as confident mistakes and fails the intended ambiguity-routing goal. MLP rejects roughly 26-29%, but seed 44 accepted test accuracy is 89.66%, below the fitting target: calibration performance does not guarantee held-out performance.
 
-### Threshold experiment and decision record
+### Original threshold experiment and subsequent decision record
 
 | Item | Recorded finding or decision |
 | --- | --- |
 | Experimental objective | Fit on calibration data only; require at least 90% empirical accepted-case accuracy and maximise coverage under the stated grid rule. |
 | Observed GCN outcome | Threshold 0 for all three seeds, 100% test coverage; every selected failure is accepted. |
 | Engineering interpretation | The fitting objective is satisfied, but useful ambiguity routing is not. Analysis completion is not evidence of business-goal attainment. |
-| Current decision | Preserve the locked code, weights, thresholds and results. Test labels and error cases have already been inspected and will not be used for retrospective policy tuning. |
-| Requirement clarification | A separate Ed follow-up question has been prepared; sending is not confirmed and no reply is recorded. No waiver or teacher approval is inferred while clarification is outstanding. |
-| Future, unvalidated options | A risk bound, explicit review budget or ambiguity margin would require a new validation protocol with independent evaluation data; none is implemented or tested here. |
+| Original result preserved | Keep the original 90% rule, code, weights, thresholds and results. The additional 97% policies are separate files fitted on calibration data; original-test reuse is labelled post-hoc. |
+| Requirement clarification | The student reported no Ed reply at the last update. No waiver or teaching-team approval of the new policy is inferred. The exploratory 97% target is a project decision. |
+| Remaining unvalidated options | A statistical risk bound, explicit review budget or ambiguity-margin rule is not implemented. Independent confirmation of the new 97% policy also remains outstanding. |
 
 The post-consultation documentation record is [reports/post_checkoff_record.md](reports/post_checkoff_record.md). It separates the student's reported check-off completion from unresolved interpretation of the final requirements.
+
+### Post-hoc policy improvement - 26 October 2026
+
+The chosen improvement is to require at least **97% empirical accepted calibration accuracy**, then maximise coverage with the same 0.01 grid and minimum-5% acceptance rule. This raises the formerly non-binding 90% objective; 97% is neither a confidence cutoff of 0.97 nor a course-mandated or statistical safety guarantee. Original weights, positive temperatures, split and class predictions remain unchanged. Scalar thresholds for seeds 42/43/44 are **0.73/0.76/0.74**. The code stores the policies separately rather than overwriting trained checkpoints or the original policy.
+
+All three policies were fitted using calibration labels and saved with protocol/checkpoint hashes before this follow-up calculated reused-test metrics. However, the original test results had already been inspected when this new objective was selected. The following is therefore **post-hoc reuse of the original test**, not untouched evaluation or independent confirmation. The thresholds are kept fixed after these outcomes, including the failed target for seed 44.
+
+| Seed | Threshold | Accepted / 4,496 | To human review | Coverage (%) | Accepted accuracy (%) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 42 | 0.73 | 4,056 | 440 | 90.21 | 97.02 |
+| 43 | 0.76 | 3,959 | 537 | 88.06 | 97.20 |
+| 44 | 0.74 | 4,024 | 472 | 89.50 | **96.99** |
+
+Mean referral is **10.74 +/- 1.10%** (percentage-point sample SD across the same initialisations), mean coverage 89.26%, and accepted-case accuracy **97.07 +/- 0.11%**. Original all-accept accuracy and unchanged whole-test model accuracy remain **93.84 +/- 0.32%**. The selective metric uses fewer, selected cases; it must not be presented as improved classification accuracy across the full test population. On average, 57.39% of original mistakes enter the review queue; no reviewer correction rate or final human-plus-model accuracy was measured.
+
+![Frozen 97% policy: referral and accepted accuracy on the previously inspected original test](figures/policy97_posthoc_comparison.png)
+
+Seed 44's exact accepted accuracy is 96.9930%, below 97%; one-decimal rounding would conceal this shortfall. Even seed 42 still accepts **121 errors** while referring 160 of its 281 original errors. Politician accepted accuracy is only about **94.80-95.42%** across these runs, so the overall target is not a per-class guarantee. High-confidence errors can still pass. The main example remains the prespecified seed 42, rather than selecting seed 43 because it looks best in this follow-up.
+
+For the five original failure cases in Section 8, seed 42's new rule refers ambiguous node **18785** (confidence 0.263498 < 0.73), while nodes 16052, 9254, 22382 and 953 remain accepted. This demonstrates routing of that near-tie; it does not resolve confidently wrong predictions or establish their cause. No threshold is changed in response to these inspected examples.
+
+The [follow-up record](reports/policy97/README.md), [full aggregate/per-class results](reports/policy97/FOLLOWUP_RESULTS.json) and [frozen policies](policies) retain all outcomes and provenance. The new prediction entry point exports decisions without reference labels; checkpoint/data bindings and a CPU replay of 4,496 seed-42 predictions check implementation consistency. A future untouched evaluation remains necessary for independent policy confirmation. The original GPU profile does not measure the additional end-to-end policy/review workflow.
 
 ## 7. Embedding visualisation and interpretation
 
@@ -151,9 +175,9 @@ These t-SNE plots use test-node 64-dimensional hidden representations, ground-tr
 
 ## 8. Five real failure autopsies
 
-Cases come from the fixed seed-42 GCN test predictions. The selection rule samples high confidence, low degree, low margin and high degree before filling unique cases; it is not a random error sample. Confidence below is temperature-scaled. All five are accepted by GCN because its threshold is zero.
+Cases come from the fixed seed-42 GCN test predictions. The selection rule samples high confidence, low degree, low margin and high degree before filling unique cases; it is not a random error sample. Confidence below is temperature-scaled. Under the original 90% policy, all five are accepted because the GCN threshold is zero; the separate 97% policy's routes are compared in Section 6.
 
-The student reports that the tutor suggested adding failure analysis to the experimental record. The following strengthens that record using existing predictions and diagnostics; it is a documentation revision, not a new experiment or a claim of formal approval.
+The student reports that the tutor suggested adding failure analysis to the experimental record. The following retains that failure record using the original predictions and diagnostics. The separate 26 October policy experiment is distinguished in Section 6; neither record claims formal teaching-team approval.
 
 | Node | True -> GCN | GCN confidence | Degree | MLP prediction / confidence / accepted |
 | --- | --- | --- | --- | --- |
@@ -166,7 +190,7 @@ The student reports that the tutor suggested adding failure analysis to the expe
 1. **16052: confident neighbourhood conflict.** **Evidence:** degree 266; all 161 training-labelled neighbours are company, 99.6% of neighbours are predicted company, and both models misclassify it as company. **Hypothesis:** feature and neighbourhood context may reinforce the wrong category. **Limit:** the MLP error prevents attributing the failure to graph aggregation alone; neither a semantic trigger nor an incorrect annotation is established. **Future action, unvalidated:** inspect original content/annotation and perform a controlled feature-versus-topology ablation on an independent evaluation protocol before deciding the cause.
 2. **9254: near-certain error.** **Evidence:** all eight training-labelled neighbours are politicians, although the node is labelled tvshow; both models predict politician, and temperature scaling increases GCN confidence to approximately one without correcting its class. **Hypothesis:** shared feature/context ambiguity may drive the error. **Limit:** neither high confidence nor neighbour agreement proves the prediction correct, and no page-text evidence identifies the ambiguity. **Future action, unvalidated:** audit original content and study high-confidence errors under a separately validated review rule.
 3. **22382: sparse local support.** **Evidence:** the single non-self neighbour has a training tvshow label; GCN predicts tvshow at 0.816, while MLP predicts company and refers the case. **Hypothesis:** sparse context may leave the representation sensitive to one neighbouring page. **Limit:** one example and the MLP error cannot establish that low degree caused the failure. **Future action, unvalidated:** evaluate degree-stratified error rates and controlled edge perturbations using independent evaluation data.
-4. **18785: explicit ambiguity missed by policy.** **Evidence:** GCN predicts government at 0.2635, with a top-two margin of 0.0015; degree is two, and its one training-labelled neighbour is politician. MLP also predicts government but refers it. **Hypothesis:** the near-tied scores indicate insufficient class separation. **Limit:** the scores establish ambiguity, not its semantic cause, and do not determine a justified replacement threshold. **Future action, unvalidated:** predefine a margin or review-budget criterion and validate it separately. The current all-accept policy demonstrably misses this ambiguity.
+4. **18785: explicit ambiguity missed by policy.** **Evidence:** GCN predicts government at 0.2635, with a top-two margin of 0.0015; degree is two, and its one training-labelled neighbour is politician. MLP also predicts government but refers it. **Hypothesis:** the near-tied scores indicate insufficient class separation. **Limit:** the scores establish ambiguity, not its semantic cause, and do not determine a justified replacement threshold. **Future action, unvalidated:** predefine a margin or review-budget criterion and validate it separately. The original all-accept policy demonstrably misses this ambiguity; the separate seed-42 97% policy now refers this case, with the post-hoc limitation stated in Section 6.
 5. **953: confident error with mixed labelled context.** **Evidence:** degree four; one training neighbour is tvshow and one company, yet all neighbours' predicted labels agree with company. GCN predicts company at 0.9998; MLP predicts politician at 0.3448 and refers it. **Hypothesis:** local representation/prediction agreement may reinforce the wrong class. **Limit:** prediction agreement is not ground truth, and the differing MLP error does not isolate a causal graph effect. **Future action, unvalidated:** inspect content and compare feature/topology ablations before choosing an intervention.
 
 ![Training-neighbour label context for the five GCN errors](figures/failure_neighbourhood.png)
@@ -208,15 +232,28 @@ python predict.py runs/final/mlp_seed42/model.pt --split test --device cuda --em
 python predict.py runs/final/gcn_seed42/model.pt --split test --device cuda --embedding
 ```
 
-Input is the checksum-verified numeric archive, converted to `x: [22470,128]` and canonical `edge_index: [2,341646]`. Outputs include `model.pt`, `summary.json`, `history.csv`, `training.png`, then `predictions_test/predictions.csv`, `evaluation.json`, `confidence.png` and optional `embedding.png`. CSV fields are node ID, true/predicted numeric label, confidence and accepted flag; labels 0-3 follow tvshow/government/company/politician. For example, node 18785 yields predicted label 1, true label 3, confidence approximately 0.263498, accepted True.
+Input is the checksum-verified numeric archive, converted to `x: [22470,128]` and canonical `edge_index: [2,341646]`. Outputs include `model.pt`, `summary.json`, `history.csv`, `training.png`, then `predictions_test/predictions.csv`, `evaluation.json`, `confidence.png` and optional `embedding.png`. CSV fields are node ID, true/predicted numeric label, confidence and accepted flag; labels 0-3 follow tvshow/government/company/politician. Under the original saved policy, node 18785 yields predicted label 1, true label 3, confidence approximately 0.263498, accepted True.
 
-Datasets, weights, environments and generated run folders are excluded from Git. Reproduce checkpoints locally or retain private backups; do not expect weights to be bundled in the PR. The Colab demo reads saved evidence by default; regenerating displayed tables/plots is not a new formal training run. Fresh prediction requires the saved checkpoint and dataset.
+Datasets, weights, environments and generated run folders are excluded from Git. Reproduce checkpoints locally or retain private backups; do not expect weights to be bundled in the PR. The unchanged Colab demo reads the original saved evidence by default; it is a baseline snapshot and does not include the 26 October follow-up. Regenerating its displayed tables/plots is not a new formal training run. Fresh prediction requires the saved checkpoint and dataset.
+
+### Apply or replay the separate 97% policy
+
+From this project directory, restore the original checkpoints and summaries under `runs/final/gcn_seed42`, `gcn_seed43`, `gcn_seed44` and the pinned dataset. Use the separate entry points:
+
+```bash
+python policy97_experiment.py --output runs/policy97_replay
+python predict_with_policy.py --policy policies/gcn_seed42_policy97.json \
+  --checkpoint runs/final/gcn_seed42/model.pt \
+  --output runs/policy97_seed42_predictions.csv
+```
+
+The first command reproduces the explicitly post-hoc follow-up on CPU without retraining; use `--runs-dir` and `--data` for other private locations. The second applies the frozen seed-42 policy and exports `node_id,predicted_label,predicted_class,confidence,accepted,route,policy_id`, with route `automatic_candidate` or `human_review`. Reference labels are not exported or used for decisions, and no accuracy is calculated by this prediction command. Hash/seed/configuration/temperature mismatches are rejected. Existing outputs are not overwritten. Newly trained checkpoints require their own calibration-fitted policy; the supplied hashes bind these policies to the actual original weights. `predict.py` intentionally retains the old checkpoint policy. No dataset, checkpoint or per-node labelled follow-up export is added to Git.
 
 ## 11. Engineering recommendation and remaining limitations
 
-Choose GCN for the next assisted-classification prototype: its accuracy/F1 gain is substantial on this split for modest absolute inference/memory cost. Keep human review rather than approve the present all-accept policy. Prioritise a separately validated review budget/risk requirement, class-specific politician errors, and explicit ambiguous-case handling. MLP is a cheaper fallback when graph access is unavailable, though its quality is substantially lower here.
+Choose GCN for the next assisted-classification prototype: its accuracy/F1 gain is substantial on this split for modest absolute inference/memory cost. The separate 97% policy provides a concrete review queue while preserving the original benchmark, but is not independently confirmed. Prioritise untouched evaluation, class-specific politician errors, and high-confidence mistakes before treating it as a deployment rule. MLP is a cheaper fallback when graph access is unavailable, though its quality is substantially lower here.
 
-External validity remains limited by one graph, one random split, globally supplied features, no inductive/time-shift evaluation, one small architecture and no extensive hyperparameter search. Three initialisations do not replace repeated splits. Small-bin ECE and five selected failures cannot establish deployment safety. New policy development must reserve independent evaluation data after the present test inspection. No proposed improvement in this section is represented as a completed experiment.
+External validity remains limited by one graph, one random split, globally supplied features, no inductive/time-shift evaluation, one small architecture and no extensive hyperparameter search. Three initialisations do not replace repeated splits. Small-bin ECE and five selected failures cannot establish deployment safety. Further policy development must reserve independent evaluation data after the present test inspection. The 97% policy is implemented as a transparent post-hoc extension; independent policy confirmation, statistical risk control and human-review effectiveness remain unestablished.
 
 ### Measured status of the five acceptance criteria
 
@@ -224,7 +261,7 @@ External validity remains limited by one graph, one random split, globally suppl
 | --- | --- |
 | Data integrity and split controls | Audit and six targeted checks completed; selected properties verified, not a proof against every possible defect or upstream leakage. |
 | Matched benchmark | Completed for MLP/GCN, three initialisations on one fixed split, with per-class metrics, Macro-F1 and AUROC. |
-| Confidence and review analysis | Temperature/threshold fitting, reliability and held-out coverage/error analysis completed. Useful ambiguity routing is **not achieved** by the GCN threshold-zero policy. |
+| Confidence and review analysis | Original calibration/threshold analysis completed, with failed routing under threshold zero preserved. The separate 97% policy produces 10.74% mean referral in post-hoc original-test reuse; independent confirmation and every-seed/per-class 97% attainment are not established. |
 | Interpretation and failures | Two t-SNE views and five evidence-led failure analyses completed; causal explanations and proposed interventions remain unvalidated. |
 | Resources and reproduction | Parameter counts, synchronised forward timings, GPU allocator peaks and checkpoint reloads recorded. GCN 82.98 MiB is below the original 4 GiB planning target; deployment-scale and dedicated-device performance are untested. |
 
@@ -258,18 +295,20 @@ The following preserves the **preliminary** review; its unfinished-experiment st
 
 ## 13. Submission status
 
-The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion.
+The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.5; its Normal GNN, marking and submission requirements are unchanged from Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion. This 26 October revision adds policy code, frozen thresholds, aggregate evidence, a comparison figure and an explicitly post-hoc analysis; it does not replace the original benchmark or update Colab.
 
 ## Artificial Intelligence Usage Disclosure
 
 **ChatGPT and Codex** provided substantial assistance with interpreting requirements, finding/checking references and the course data link, planning experiments, scaffolding and refining data/model/training/evaluation code and tests, debugging environment/SSH issues, preparing plotting and reporting material, interpreting results, and producing the Colab/tutor preparation material. This is broader than autocomplete; it is not represented as wholly independent manual coding. The GCN formulation is attributed to Kipf and Welling, and dataset handling to the cited course/PyG sources.
 
-Verification included the checksum/data audit, leakage and graph-normalisation checks, six passing software tests, five-epoch CPU feasibility runs, actual six-model Rangpur experiments, checkpoint reloading, prediction-CSV consistency checks and inspection of saved plots/errors. These checks verify particular properties, not every possible defect or deployment safety. The student remains responsible for understanding and explaining every submitted operation, loss and metric; AI-generated explanations must be checked against code and evidence. The threshold-zero limitation and calibration regressions are disclosed rather than replaced with an untested improvement.
+Verification included the checksum/data audit, leakage and graph-normalisation checks, six passing software tests, five-epoch CPU feasibility runs, actual six-model Rangpur experiments, checkpoint reloading, prediction-CSV consistency checks and inspection of saved plots/errors. These checks verify particular properties, not every possible defect or deployment safety. The student remains responsible for understanding and explaining every submitted operation, loss and metric; AI-generated explanations must be checked against code and evidence. The original threshold-zero limitation and calibration regressions remain disclosed. AI also assisted with the separate 26 October 97% policy proposal, code, CPU analysis, provenance checks and documentation. Frozen policy hashes, unchanged original-source/checkpoint hashes, label-free replay, error-count accounting and negative binding checks verify specific properties. Seed 44's shortfall and post-hoc evaluation status are retained; the extension is not presented as independently validated.
 
 ## References
 
-1. COMP3710 teaching team. *Final Report Assessment*, Version 2.4, 2026, Sections 2.1 and 3-6 and Appendix A.6; supplied assessment document checked on 21 October. Version 2.4 clarifies the GNN data source; the relevant check-off, submission and marking provisions are unchanged from the previously supplied specification.
+1. COMP3710 teaching team. *Final Report Assessment*, Version 2.5, 2026, Sections 2.1 and 3-6 and Appendix A.6; supplied document checked on 26 October. Relative to Version 2.4, the relevant GNN, check-off, submission and marking requirements are unchanged; the added MambaIRv2 test link concerns another project.
 2. T. N. Kipf and M. Welling. *Semi-Supervised Classification with Graph Convolutional Networks*. ICLR, 2017. [Paper](https://arxiv.org/abs/1609.02907).
 3. C. Guo, G. Pleiss, Y. Sun and K. Q. Weinberger. *On Calibration of Modern Neural Networks*. ICML, 2017. [Paper](https://arxiv.org/abs/1706.04599).
 4. PyTorch Geometric. [FacebookPagePage documentation](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.datasets.FacebookPagePage.html) and [loader source](https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/datasets/facebook.html).
 5. Course-linked [Facebook Page-Page numeric dataset and preprocessing description](https://github.com/gayanku/facebook_page-page_dataset), pinned commit and checksum in Section 2.
+
+6. Y. Geifman and R. El-Yaniv. *Selective Classification for Deep Neural Networks*. NeurIPS, 2017. [Paper](https://proceedings.neurips.cc/paper/2017/hash/4a8423d5e91fda00bb7e46540e2b0cf1-Abstract.html). Cited for the coverage/error trade-off; its statistical guarantee is not implemented here.
