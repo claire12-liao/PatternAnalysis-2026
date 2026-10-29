@@ -1,6 +1,6 @@
 # Current assessment alignment and evidence boundaries
 
-Yuhan Liao - 49839991 - 26 October 2026
+Yuhan Liao - 49839991 - 29 October 2026
 
 Checked against the user-supplied **Final Report Assessment v2.5**, Sections 2.1, 3-6 and Appendix A.6, including the later supplied PDF with the same relevant body. Classroom tips are applied as engineering guidance; they are not substituted for the official rubric. Feasibility completion is student-confirmed. This is an evidence map, not a prediction of marks or approval by the teaching team.
 
@@ -53,4 +53,4 @@ Normal implementation is capped at 15/20; the overall structural maximum is 35/4
 - Cost and fallback choices are measured; no additional school GPU quota is required for the saved-model refinement.
 - AI assistance is disclosed broadly, and no automated workflow can substitute for the student's understanding.
 
-External data, page-content/annotation investigation, human-review effectiveness, Turnitin receipt and future formal reviewer responses cannot be manufactured by code or report edits. Ed has no supplied reply; no replacement threshold is described as teaching-team approved. Colab stays unchanged under the student's explicit instruction.
+External data, page-content/annotation investigation, human-review effectiveness, Turnitin receipt and future formal reviewer responses cannot be manufactured by code or report edits. Ed screenshots supplied on 29 October show a methodological clarification and a request for the source of temperature T; the report now identifies Guo et al. (2017), Section 4.2, Equation 9. No experimental target or replacement threshold is described as formally approved, and no PR review was present at the 29 October check. Colab stays unchanged under the student's explicit instruction.

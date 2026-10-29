@@ -1,6 +1,6 @@
 # Confidence-aware Facebook Page Classification with a GCN
 
-**Yuhan Liao - 49839991 | COMP3710, Semester 2, 2026 | Final experiment report: 21 October 2026**
+**Yuhan Liao - 49839991 | COMP3710, Semester 2, 2026 | Report revision: 29 October 2026**
 
 **Selected project:** Multi-layer GNN, Normal difficulty.
 
@@ -108,7 +108,7 @@ Matrix numbers are counts; colour is normalised within each true-class row. GCN 
 
 ## 6. Confidence, calibration and the reject-option limitation
 
-Confidence is the maximum softmax probability. Scalar temperature T is fitted by minimising cross-entropy on calibration nodes only, then probabilities are `softmax(Z/T)`. T is positive (clamped to 0.05-20), so it adjusts sharpness without changing the predicted class. ECE uses ten equal-width confidence bins, weighted by their population; it depends on binning and can conceal sparse-region errors.
+The GCN outputs four logits, not a separate confidence or correctness head. Confidence is the maximum probability from `softmax(Z/T)`. This optional post-training temperature scaling follows Guo et al. (2017), Section 4.2, Equation 9 [Reference 3]. With the trained weights frozen, a positive scalar T is fitted by minimising cross-entropy on calibration nodes only (implementation range 0.05-20). T adjusts probability sharpness and preserves the predicted class; T=1 recovers ordinary softmax, T>1 softens and T<1 sharpens. T is distinct from the acceptance threshold: one rescales probabilities, the other routes predictions. Neither turns the score into a guaranteed correctness probability. ECE uses ten equal-width confidence bins, weighted by their population; it depends on binning and can conceal sparse-region errors.
 
 | Model | Test NLL: raw -> scaled | Test ECE: raw -> scaled | Fitted T (42 / 43 / 44) |
 | --- | --- | --- | --- |
@@ -144,7 +144,7 @@ The implemented threshold grid is 0, 0.01, ..., 1.00. Candidates must accept at 
 | Observed GCN outcome | Threshold 0 for all three seeds, 100% test coverage; every selected failure is accepted. |
 | Engineering interpretation | The fitting objective is satisfied, but useful ambiguity routing is not. Analysis completion is not evidence of business-goal attainment. |
 | Original result preserved | Keep the original 90% rule, code, weights, thresholds and results. The additional 97% policies are separate files fitted on calibration data; original-test reuse is labelled post-hoc. |
-| Requirement clarification | The student reported no Ed reply at the last update. No waiver or teaching-team approval of the new policy is inferred. The exploratory 97% target is a project decision. |
+| Requirement clarification | Ed screenshots supplied on 29 October show the teacher asking how confidence is derived, then replying that the description seems fine and requesting the source of T. Reference 3 supplies that source. This is a methodological exchange, not a formal PR review or approval of the experimental 97%/98% targets. |
 | Remaining unvalidated options | A statistical risk bound, explicit review budget or ambiguity-margin rule is not implemented. Independent confirmation of the new 97% policy also remains outstanding. |
 
 The post-consultation documentation record is [reports/post_checkoff_record.md](reports/post_checkoff_record.md). It separates the student's reported check-off completion from unresolved interpretation of the final requirements.
@@ -411,7 +411,7 @@ The following preserves the **preliminary** review; its unfinished-experiment st
 
 ## 13. Submission status
 
-The modular implementation, formal experiments and local result backups are complete. This README includes the final evidence and historical feasibility review. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) is open against upstream `topic-recognition`, preserving the progressive development history. The report has been checked against Version 2.5; its Normal GNN, marking and submission requirements are unchanged from Version 2.4. Feasibility check-off is completed (student-confirmed). Ed clarification of the remaining rule interpretation is awaited; no answer is recorded. The Turnitin receipt has not been provided, and the later formal PR review response remains outstanding. The selected Normal problem does not qualify for the Hard-only implementation criterion. The 26 October revisions add the frozen-policy extension, six-run five-role CPU study, exact-search repair, three new weighted GCN runs, optional random quality review, a fixed six-model confidence/disagreement ablation, selected-error edge isolation and twenty-six targeted checks. Neither replaces original results or updates Colab. The student confirms no additional data or Ed reply is available; external validation, zero-error automation and grading approval cannot be asserted.
+The modular implementation, experiments and backups are complete. This README includes the final evidence and historical feasibility review, checked against Version 2.5. [PR #9](https://github.com/shakes76/PatternAnalysis-2026/pull/9) remains open against upstream `topic-recognition` with progressive commits. Feasibility check-off is completed (student-confirmed). At the 29 October, 18:06 Brisbane check, GitHub showed no formal reviews, inline comments or discussion comments. In supplied Ed screenshots, Gayan Kulatilake first asks whether the GNN predicts confidence, then says the description seems fine and asks for the source of T. Section 6 and Reference 3 explain that source and distinguish calibration from rejection. A reply citing the paper has been prepared; posting or a further response is not established. This exchange is not a formal code review or grading approval. The Turnitin receipt has not been provided. The Normal project does not meet the Hard-only criterion. The 26 October routing, weighted-training and consensus studies retain all original results, twenty-six targeted checks and unresolved high-confidence errors. This 29 October revision clarifies documentation only; it changes no models, policies, scores or Colab. No external validation or measured human correction is claimed.
 
 ## Artificial Intelligence Usage Disclosure
 
@@ -423,7 +423,7 @@ Verification included the checksum/data audit, leakage and graph-normalisation c
 
 1. COMP3710 teaching team. *Final Report Assessment*, Version 2.5, 2026, Sections 2.1 and 3-6 and Appendix A.6; supplied document checked on 26 October. Relative to Version 2.4, the relevant GNN, check-off, submission and marking requirements are unchanged; the added MambaIRv2 test link concerns another project.
 2. T. N. Kipf and M. Welling. *Semi-Supervised Classification with Graph Convolutional Networks*. ICLR, 2017. [Paper](https://arxiv.org/abs/1609.02907).
-3. C. Guo, G. Pleiss, Y. Sun and K. Q. Weinberger. *On Calibration of Modern Neural Networks*. ICML, 2017. [Paper](https://arxiv.org/abs/1706.04599).
+3. C. Guo, G. Pleiss, Y. Sun and K. Q. Weinberger. *On Calibration of Modern Neural Networks*. ICML, PMLR 70:1321-1330, 2017. Section 4.2, Equation 9: temperature scaling. [Paper](https://proceedings.mlr.press/v70/guo17a/guo17a.pdf).
 4. PyTorch Geometric. [FacebookPagePage documentation](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.datasets.FacebookPagePage.html) and [loader source](https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/datasets/facebook.html).
 5. Course-linked [Facebook Page-Page numeric dataset and preprocessing description](https://github.com/gayanku/facebook_page-page_dataset), pinned commit and checksum in Section 2.
 

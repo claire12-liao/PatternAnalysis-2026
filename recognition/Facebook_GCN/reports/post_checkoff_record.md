@@ -1,3 +1,13 @@
+## Documentation and Ed clarification - 29 October 2026
+
+The student supplied Ed screenshots containing two teaching-team replies. Gayan Kulatilake first asks whether the GNN actually predicts confidence, then replies: "This seems fine. Though the use of T is a bit unusual. Where did you get that from?" The screenshot establishes a methodological exchange, not the original posting date, formal PR approval or an assessed mark.
+
+The final report now identifies logits as the GNN output and maximum temperature-scaled softmax as a derived confidence proxy. It cites Guo et al. (ICML 2017), Section 4.2, Equation 9; temperature fitting minimises calibration cross-entropy with fixed network weights. Temperature T and the acceptance threshold have different roles. Positive scalar scaling preserves class labels, can sharpen when T<1, and cannot eliminate confident mistakes. A source-citing English reply is prepared; posting and any subsequent answer are not confirmed.
+
+At 18:06 Brisbane time on 29 October, PR #9 remained open with zero formal reviews, inline comments and discussion comments. This documentation revision changes no experiment, policy, score, source algorithm or Colab. Earlier dated records below retain the status known at their own dates, including statements that no Ed reply was then available. Turnitin submission and future formal review responses remain separate user actions.
+
+## Earlier dated records
+
 ## Latest confidence investigation - 26 October
 
 A fixed six-model confidence study and five-case edge-isolation diagnosis are now complete; [full record](consensus/README.md). Mean routing reduces accepted errors 32 to 29 and missed-politician errors 7 to 5 against prespecified seed42, with lower coverage and 6.23x measured CPU latency. Unanimity adds no final-case benefit; politician ECE worsens and a shared >=.99 politician error remains. This is post-hoc, with 26 targeted tests and two negative integration checks; no external validation or human correction is claimed. Original results and Colab remain unchanged.
